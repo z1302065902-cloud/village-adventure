@@ -1,0 +1,26 @@
+name: Publish to itch.io
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  itch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -o butler.zip
+          chmod +x butler
+          ./butler -V
+      - name: Zip dist
+        run: |
+          cd dist && zip -r ../game.zip . -x 'cover.png' -x '.*'
+          ls -lah ../game.zip
+      - name: Push to itch
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+        run: |
+          ./butler push game.zip zsy2026/village-adventure:html5 --userversion "$(date -u +%Y%m%d-%H%M)"
+          ./butler status zsy2026/village-adventure:html5 || true
