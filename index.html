@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Village Adventure · 村庄大冒险</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #e8f4ff;
+            --panel: rgba(12, 18, 32, 0.88);
+            --line: rgba(143, 227, 255, 0.35);
+            --accent: #5ee0a0;
+            --danger: #ff6b6b;
+            --gold: #ffd56a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            overflow: hidden; background: #0b1220;
+            font-family: 'Nunito', 'PingFang SC', sans-serif;
+            color: var(--ink);
+        }
+        #info {
+            position: absolute; top: 10px; left: 10px;
+            color: var(--ink); font-size: 13px;
+            background: var(--panel); padding: 12px 14px; border-radius: 12px;
+            border: 1px solid var(--line);
+            pointer-events: none; z-index: 100; max-width: 280px;
+            line-height: 1.45;
+        }
+        #loading {
+            position: fixed; inset: 0;
+            background: linear-gradient(160deg, #0b1220, #1a2a44 55%, #0e1a2e);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 22px; z-index: 300; flex-direction: column;
+            font-family: 'ZCOOL KuaiLe', 'Nunito', sans-serif;
+        }
+        #loading .hint { font-size: 14px; color: #9bb; margin-top: 16px; font-family: Nunito, sans-serif; }
+        #hint {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            color: white; font-size: 13px; background: var(--panel);
+            border: 1px solid var(--line);
+            padding: 8px 16px; border-radius: 999px; z-index: 150;
+            pointer-events: none;
+        }
+        #hud {
+            position: fixed; top: 12px; right: 12px; z-index: 120;
+            color: #fff; font-size: 13px; background: var(--panel);
+            border: 1px solid var(--line); padding: 12px 14px;
+            border-radius: 12px; width: 270px;
+            pointer-events: none;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+        }
+        #hud .brand {
+            font-family: 'ZCOOL KuaiLe', sans-serif;
+            font-size: 15px; color: var(--gold); margin-bottom: 6px;
+        }
+        #hud .hpbar, #hud .bossbar {
+            height: 14px; background: #1c2436; border-radius: 7px; overflow: hidden; margin-bottom: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        #hud .hpfill {
+            height: 100%; background: linear-gradient(90deg,#6ff0b0,#2bc46e); transition: width .2s;
+            box-shadow: 0 0 10px rgba(80,230,140,0.45);
+        }
+        #hud .bossbar { height: 12px; background: #3a1515; }
+        #hud .bossfill { height: 100%; background: linear-gradient(90deg,#ff7a7a,#c11); transition: width .2s; }
+        #hud .hudrow { margin: 4px 0; line-height: 1.4; }
+        #hud .hudrow strong { color: #8fe3ff; }
+        #hud .protect { color: var(--accent); font-size: 12px; }
+
+        #floatLayer {
+            position: fixed; inset: 0; pointer-events: none; z-index: 160; overflow: hidden;
+        }
+        .dmgFloat {
+            position: absolute; font-weight: 800; font-size: 22px;
+            text-shadow: 0 2px 0 #000, 0 0 12px rgba(255,80,80,0.6);
+            animation: floatUp 0.7s ease-out forwards;
+            color: #ffd0d0;
+        }
+        .dmgFloat.kill { color: var(--gold); font-size: 26px; }
+        .dmgFloat.heal { color: var(--accent); }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -48px) scale(1.15); }
+        }
+
+        #titleScreen, #endScreen {
+            position: fixed; inset: 0; z-index: 250;
+            display: flex; align-items: center; justify-content: center;
+            background:
+                radial-gradient(ellipse at 50% 20%, rgba(80,160,255,0.2), transparent 55%),
+                linear-gradient(180deg, rgba(8,14,26,0.55), rgba(8,14,26,0.88));
+            backdrop-filter: blur(2px);
+        }
+        #titleScreen.hidden, #endScreen.hidden { display: none; }
+        .panel {
+            width: min(420px, 92vw);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 28px 24px 22px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+        .panel h1 {
+            font-family: 'ZCOOL KuaiLe', cursive;
+            font-size: 34px; color: var(--gold); letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .panel .sub { color: #9ec7e8; font-size: 14px; margin-bottom: 18px; }
+        .panel .desc { color: #c9d7e8; font-size: 13px; line-height: 1.5; margin-bottom: 20px; }
+        .btns { display: flex; flex-direction: column; gap: 10px; }
+        .btn {
+            appearance: none; border: 0; cursor: pointer;
+            border-radius: 12px; padding: 12px 16px;
+            font-size: 16px; font-weight: 800; font-family: inherit;
+            transition: transform .12s ease, filter .12s;
+        }
+        .btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+        .btn:active { transform: translateY(1px); }
+        .btn.primary { background: linear-gradient(180deg,#6fe3a8,#2bb86a); color: #062214; }
+        .btn.secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid var(--line); }
+        .btn.danger { background: linear-gradient(180deg,#ff8a8a,#e04545); color: #fff; }
+        .payrow {
+            display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+            margin-top: 14px;
+        }
+        .pay {
+            display: inline-block; text-decoration: none; font-size: 12px; font-weight: 800;
+            padding: 8px 12px; border-radius: 10px; color: #fff;
+            background: #e8794f; box-shadow: 0 2px 6px rgba(0,0,0,.3);
+        }
+        .pay.alt { background: #3d7ecf; }
+        .paynote {
+            margin-top: 8px; font-size: 10px; color: rgba(255,255,255,0.55);
+        }
+        #endTitle { font-family: 'ZCOOL KuaiLe', cursive; font-size: 30px; margin-bottom: 8px; }
+        #endMsg { color: #c9d7e8; font-size: 14px; margin-bottom: 18px; line-height: 1.5; }
+
+        #toast {
+            position: fixed; top: 22%; left: 50%; transform: translateX(-50%);
+            z-index: 180; pointer-events: none;
+            background: rgba(0,0,0,0.72); border: 1px solid var(--line);
+            padding: 10px 16px; border-radius: 12px; font-size: 14px;
+            opacity: 0; transition: opacity .25s;
+            max-width: 86vw; text-align: center;
+        }
+        #toast.show { opacity: 1; }
+
+        #touchUI { display: none; position: fixed; inset: 0; z-index: 200; pointer-events: none; touch-action: none; }
+        #joyZone { position: absolute; left: 0; bottom: 0; width: 45%; height: 55%; pointer-events: auto; }
+        #joyBase {
+            position: absolute; left: 30px; bottom: 40px;
+            width: 120px; height: 120px; border-radius: 50%;
+            background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5);
+            pointer-events: auto;
+        }
+        #joyStick {
+            position: absolute; left: 50%; top: 50%;
+            width: 52px; height: 52px; border-radius: 50%;
+            margin-left: -26px; margin-top: -26px;
+            background: rgba(255,255,255,0.8); border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        #attackBtn {
+            position: absolute; right: 32px; bottom: 48px;
+            width: 88px; height: 88px; border-radius: 50%;
+            background: rgba(255,80,80,0.35); border: 2px solid rgba(255,255,255,0.7);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 40px; color: #fff; pointer-events: auto;
+            user-select: none;
+        }
+        @media (pointer: coarse) {
+            #touchUI { display: block; }
+            #info { display: none; }
+            #hud { font-size: 11px; width: 200px; }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div style="width:50px;height:50px;border:3px solid #333;border-top-color:#5ee0a0;border-radius:50%;animation:spin 1s linear infinite;"></div>
+        <div style="margin-top:20px;">村庄大冒险</div>
+        <div class="hint">Collect · Hunt · Boss · 约 5–10 分钟一局</div>
+    </div>
+
+    <div id="titleScreen">
+        <div class="panel">
+            <h1>村庄大冒险</h1>
+            <div class="sub">Village Adventure</div>
+            <div class="desc">收集水晶 → 猎杀魔化野兽 → 挑战 Boss。<br>WASD 移动 · 点击/F/空格攻击 · 一局可通关。</div>
+            <div class="btns">
+                <button class="btn primary" id="btnNewGame">开始冒险</button>
+                <button class="btn secondary" id="btnContinue" style="display:none">继续进度</button>
+            </div>
+            <div class="payrow" id="payrowTitle">
+                <a class="pay" href="https://zsy2026.itch.io/village-adventure" target="_blank" rel="noopener">完整版 $1 · itch</a>
+                <a class="pay alt" href="https://afdian.com/a/zsy2026" target="_blank" rel="noopener">爱发电赞助</a>
+            </div>
+            <div class="paynote">数字商品 · 售出不退</div>
+        </div>
+    </div>
+
+    <div id="endScreen" class="hidden">
+        <div class="panel">
+            <div id="endTitle">结算</div>
+            <div id="endMsg"></div>
+            <div class="btns">
+                <button class="btn primary" id="btnRetry">再来一局</button>
+                <button class="btn secondary" id="btnRetryLevel">重试本关</button>
+                <button class="btn secondary" id="btnTitle">回标题</button>
+            </div>
+            <div class="payrow">
+                <a class="pay" href="https://zsy2026.itch.io/village-adventure" target="_blank" rel="noopener">完整版 $1 · itch</a>
+                <a class="pay alt" href="https://afdian.com/a/zsy2026" target="_blank" rel="noopener">爱发电赞助</a>
+            </div>
+            <div class="paynote">数字商品 · 售出不退</div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="floatLayer"></div>
+
+    <div id="hint">💡 点击「开始冒险」后进入游戏</div>
+    <div id="info">
+        🎮 村庄大冒险<br>
+        <strong>操作</strong><br>
+        点击锁定鼠标 · 拖动转视角<br>
+        WASD 移动 · Q/E 转向 · Shift 加速<br>
+        点击 / F / 空格 = 攻击<br>
+        R = 结算后快捷重开
+    </div>
+    <div id="hud"></div>
+
+    <div id="touchUI">
+        <div id="joyZone">
+            <div id="joyBase"><div id="joyStick"></div></div>
+        </div>
+        <div id="attackBtn">⚔️</div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="js/game.js"></script>
+    <script>
+        setTimeout(() => {
+            const el = document.getElementById('loading');
+            if (el) el.style.display = 'none';
+        }, 1800);
+    </script>
+</body>
+</html>
