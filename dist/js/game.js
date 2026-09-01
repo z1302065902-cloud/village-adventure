@@ -57,10 +57,13 @@ class Game {
     this.awaitingStart = true;
     this.PAY = {
       itchUrl: 'https://zsy2026.itch.io/village-adventure',
-      afdianUrl: 'https://afdian.com/a/zsy2026',
+      afdianUrl: 'https://afdian.com/item/1de1950c947811f1be3352540025c377',
       demoMaxLevel: 2, // 0-based：免费试玩含第 1–2 关
     };
     this._initDistribution();
+    document.querySelectorAll('a[href*="afdian.com"]').forEach((a) => {
+      a.href = this.PAY.afdianUrl;
+    });
 
     // 10 关：前段偏短易通，适合 itch 单局 5–10 分钟
     this.levels = [
