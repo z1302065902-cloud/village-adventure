@@ -55,6 +55,12 @@ class Game {
     this._sessionId = 's' + Date.now().toString(36);
     this.SAVE_KEY = 'village_adventure_v1';
     this.awaitingStart = true;
+    this.PAY = {
+      itchUrl: 'https://zsy2026.itch.io/village-adventure',
+      afdianUrl: 'https://afdian.com/a/zsy2026',
+      demoMaxLevel: 2, // 0-based：免费试玩含第 1–2 关
+    };
+    this._initDistribution();
 
     // 10 关：前段偏短易通，适合 itch 单局 5–10 分钟
     this.levels = [
@@ -536,6 +542,45 @@ class Game {
   trackAdOpportunity(place) { this.track('ad_opportunity', { place: place || 'unknown' }); }
   trackPaywall(place) { this.track('paywall_shown', { place: place || 'unknown' }); }
 
+  _initDistribution() {
+    const host = location.hostname;
+    const params = new URLSearchParams(location.search);
+    this.hasFullAccess = params.get('full') === '1';
+    this.isFreeMirror = /vercel\.app|github\.io|localhost|127\.0\.0\.1/.test(host);
+    this.isDemoOnly = !this.hasFullAccess && (params.get('demo') === '1' || this.isFreeMirror);
+    if (this.isDemoOnly) {
+      const badge = document.getElementById('demoBadge');
+      const desc = document.getElementById('titleDesc');
+      if (badge) badge.classList.remove('hidden');
+      if (desc) desc.innerHTML = '免费试玩前 2 关 · 完整 10 关请 itch $1 购买下载包。<br>WASD 移动 · 点击/F/空格攻击。';
+    }
+  }
+
+  _isLevelLocked(levelIndex) {
+    return this.isDemoOnly && levelIndex >= this.PAY.demoMaxLevel;
+  }
+
+  _showPaywall(place) {
+    this.trackPaywall(place);
+    this.gameState = 'paywall';
+    this.awaitingStart = true;
+    this.clearGameplay();
+    this._hideEnd();
+    this._hideTitle();
+    const el = document.getElementById('paywallScreen');
+    const msg = document.getElementById('paywallMsg');
+    if (msg) {
+      msg.textContent = '免费试玩仅含前 ' + this.PAY.demoMaxLevel + ' 关。在 itch 支付 $1 下载完整版（10 关 + Boss），或使用爱发电赞助。';
+    }
+    if (el) el.classList.add('show');
+    this.updateHUD();
+  }
+
+  _hidePaywall() {
+    const el = document.getElementById('paywallScreen');
+    if (el) el.classList.remove('show');
+  }
+
   _loadSave() {
     try {
       return JSON.parse(localStorage.getItem(this.SAVE_KEY) || 'null');
@@ -559,7 +604,7 @@ class Game {
     this._hideEnd();
     const cont = document.getElementById('btnContinue');
     const save = this._loadSave();
-    if (cont) cont.style.display = (save && save.levelIndex > 0) ? '' : 'none';
+    if (cont) cont.style.display = (save && save.levelIndex > 0 && !this._isLevelLocked(save.levelIndex)) ? '' : 'none';
   }
 
   _hideTitle() {
@@ -632,10 +677,14 @@ class Game {
     };
     if (contBtn) contBtn.onclick = () => {
       const save = this._loadSave();
+      const idx = save && save.levelIndex != null ? Math.min(save.levelIndex, this.levels.length - 1) : 0;
+      if (this._isLevelLocked(idx)) {
+        this._showPaywall('continue_blocked');
+        return;
+      }
       this.awaitingStart = false;
       this._hideTitle();
       this.hp = this.maxHp;
-      const idx = save && save.levelIndex != null ? Math.min(save.levelIndex, this.levels.length - 1) : 0;
       this.track('run_start', { mode: 'continue', level: idx + 1 });
       this.startLevel(idx);
     };
@@ -653,10 +702,17 @@ class Game {
     };
     if (toTitle) toTitle.onclick = () => {
       this._hideEnd();
+      this._hidePaywall();
       this.awaitingStart = true;
       this.gameState = 'playing';
       this.clearGameplay();
       this.updateHUD();
+      this._showTitle();
+    };
+    const payBack = document.getElementById('btnPaywallBack');
+    if (payBack) payBack.onclick = () => {
+      this._hidePaywall();
+      this.gameState = 'playing';
       this._showTitle();
     };
   }
@@ -696,6 +752,11 @@ class Game {
 
   // 开始指定关卡
   startLevel(i) {
+    if (this._isLevelLocked(i)) {
+      this._showPaywall('level_' + (i + 1));
+      return;
+    }
+    this._hidePaywall();
     this.levelIndex = i;
     const lv = this.levels[i];
     lv.progress = 0;
@@ -1479,6 +1540,12 @@ class Game {
     this.toast('关卡完成！', 1400);
     this.updateHUD();
     const next = this.levelIndex + 1;
+    if (this._isLevelLocked(next)) {
+      this.gameState = 'victory';
+      this.updateHUD();
+      setTimeout(() => this._showPaywall('after_demo_levels'), 800);
+      return;
+    }
     setTimeout(() => {
       if (this.gameState !== 'victory') return;
       this.startLevel(next);

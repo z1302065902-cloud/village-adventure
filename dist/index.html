@@ -179,6 +179,27 @@
             #hud { font-size: 11px; width: 200px; }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        #paywallScreen {
+            position: fixed; inset: 0; z-index: 260;
+            display: none; align-items: center; justify-content: center;
+            background: rgba(5, 10, 20, 0.88); backdrop-filter: blur(6px);
+        }
+        #paywallScreen.show { display: flex; }
+        #paywallScreen .panel {
+            max-width: 420px; margin: 16px; padding: 28px 24px;
+            background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+            text-align: center; box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+        }
+        #paywallScreen h2 {
+            font-family: 'ZCOOL KuaiLe', cursive; font-size: 26px; color: var(--gold); margin-bottom: 8px;
+        }
+        #paywallScreen p { color: #c9d7e8; font-size: 14px; line-height: 1.55; margin-bottom: 16px; }
+        .demoBadge {
+            display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+            padding: 4px 10px; border-radius: 999px; margin-bottom: 10px;
+            background: rgba(255,213,106,0.15); color: var(--gold); border: 1px solid rgba(255,213,106,0.35);
+        }
     </style>
 </head>
 <body>
@@ -192,7 +213,8 @@
         <div class="panel">
             <h1>村庄大冒险</h1>
             <div class="sub">Village Adventure</div>
-            <div class="desc">收集水晶 → 猎杀魔化野兽 → 挑战 Boss。<br>WASD 移动 · 点击/F/空格攻击 · 一局可通关。</div>
+            <div class="desc" id="titleDesc">收集水晶 → 猎杀魔化野兽 → 挑战 Boss。<br>WASD 移动 · 点击/F/空格攻击 · 一局可通关。</div>
+            <div class="demoBadge hidden" id="demoBadge">免费试玩 · 前 2 关</div>
             <div class="btns">
                 <button class="btn primary" id="btnNewGame">开始冒险</button>
                 <button class="btn secondary" id="btnContinue" style="display:none">继续进度</button>
@@ -219,6 +241,21 @@
                 <a class="pay alt" href="https://afdian.com/a/zsy2026" target="_blank" rel="noopener">爱发电赞助</a>
             </div>
             <div class="paynote">数字商品 · 售出不退</div>
+        </div>
+    </div>
+
+    <div id="paywallScreen">
+        <div class="panel">
+            <h2>完整版需购买</h2>
+            <p id="paywallMsg">免费试玩仅含前 2 关。购买后可玩全部 10 关 + Boss 终局。</p>
+            <div class="payrow">
+                <a class="pay" id="paywallItch" href="https://zsy2026.itch.io/village-adventure" target="_blank" rel="noopener">完整版 $1 · itch</a>
+                <a class="pay alt" href="https://afdian.com/a/zsy2026" target="_blank" rel="noopener">爱发电 · 国内</a>
+            </div>
+            <div class="paynote">itch HTML5 官方不支持付费墙；完整版请 itch 购买下载包</div>
+            <div class="btns" style="margin-top:14px">
+                <button class="btn secondary" id="btnPaywallBack">返回标题</button>
+            </div>
         </div>
     </div>
 
